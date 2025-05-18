@@ -37,6 +37,13 @@ Relancez facilement une nouvelle recherche sans avoir à redémarrer le script.
 - **Optimisation des ressources** : Grâce au multithreading, plusieurs recherches peuvent être effectuées simultanément, ce qui vous permet de traiter un grand volume de données efficacement.
 - **Personnalisable** : Modifiez facilement le script pour l’adapter à d'autres annuaires en ligne, ou ajouter des fonctionnalités supplémentaires.
 
+  
+- **Update**
+```
+- Amelioration du multicoeurs
+- User-Agent
+```  
+  
 ## Instructions :
 
 ### Prérequis :
