@@ -1,5 +1,8 @@
-# Recherche Avancée dans un Annuaire en Ligne (CXS-Search)
 
+
+# Recherche Avancée dans un Annuaire en Ligne (CXS-Search)
+<p align="center">
+   <img src="CXssearch.webp" width="100%">
 🚀 **Optimisez vos recherches dans les annuaires en ligne avec ce script Python simple et efficace !**
 
 Ce script vous permet de rechercher rapidement des informations (telles que le téléphone et l’adresse) à partir des noms de famille dans un annuaire en ligne. Grâce à des fonctionnalités avancées, vous pouvez récupérer des données rapidement, filtrer les résultats par ville, et gérer les erreurs de manière transparente. Idéal pour les recherches massives et répétitives !
