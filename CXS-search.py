@@ -1,14 +1,43 @@
 import os
+import re
+import time
+import logging
 from colorama import Fore, init
 from requests import get
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-import time
+
+log_directory = 'logs'
+os.makedirs(log_directory, exist_ok=True)
+
+error_log = logging.FileHandler(os.path.join(log_directory, 'error.logs'))
+running_log = logging.FileHandler(os.path.join(log_directory, 'running.logs'))
+cxs_log = logging.FileHandler(os.path.join(log_directory, 'cxs.logs'))
+
+error_log.setLevel(logging.ERROR)
+running_log.setLevel(logging.INFO)
+cxs_log.setLevel(logging.INFO)
+
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+error_log.setFormatter(formatter)
+running_log.setFormatter(formatter)
+cxs_log.setFormatter(formatter)
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.addHandler(error_log)
+logger.addHandler(running_log)
+logger.addHandler(cxs_log)
+
 init()
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+NAME_REGEX = re.compile(r"^[a-zA-Zà-ÿÀ-ÿ' -]+$")
+CITY_REGEX = re.compile(r"^[a-zA-Zà-ÿÀ-ÿ' -]+$")
+
+MAX_REQUESTS = 700
+MAX_THREADS = min(20, os.cpu_count() * 2)
 
 class DirectorySearch:
     def __init__(self):
@@ -16,14 +45,14 @@ class DirectorySearch:
 
     def search(self, last_name, max_pages=700, max_errors=5):
         first_char = last_name[0].lower()
-        page_numbers = list(range(1, max_pages + 1))
+        page_numbers = list(range(1, min(max_pages, MAX_REQUESTS) + 1))
         all_data = []
         total_found = 0
         consecutive_errors = 0
 
-        progress_bar = tqdm(total=max_pages, desc="Chargement des pages", unit="page", ncols=100)
+        progress_bar = tqdm(total=1000, desc="Chargement des pages", unit="page", ncols=100)
 
-        with ThreadPoolExecutor(max_workers=50) as executor:
+        with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
             page_futures = {
                 executor.submit(self.fetch_page, page, first_char, last_name): page
                 for page in page_numbers
@@ -36,6 +65,7 @@ class DirectorySearch:
                     if result is None:
                         consecutive_errors += 1
                         if consecutive_errors >= max_errors:
+                            logger.warning(f"Nombre maximum d'erreurs consécutives atteint (page {page}).")
                             time.sleep(1)
                             break
                     else:
@@ -44,38 +74,37 @@ class DirectorySearch:
                             consecutive_errors += 1
                         else:
                             consecutive_errors = 0
-                        
+
                         total_found += count
                         all_data.extend(data)
                         progress_bar.update(1)
 
                 except Exception as e:
-                    print(f"{Fore.LIGHTRED_EX}[+]{Fore.LIGHTWHITE_EX} Erreur lors de la récupération de la page {page}: {str(e)}")
+                    logger.error(f"Erreur lors de la récupération de la page {page}: {str(e)}")
                     consecutive_errors += 1
                     if consecutive_errors >= max_errors:
                         break
 
         progress_bar.close()
-        print(f"\n{Fore.LIGHTGREEN_EX}[+] Recherche terminée : {total_found} résultats trouvés pour '{last_name}'.")
+        logger.info(f"Recherche terminée : {total_found} résultats trouvés pour '{last_name}'.")
         return all_data
 
     def fetch_page(self, page_num, first_char, search_name):
         url = f"{self.base_url.format(first_char)}{search_name.lower()}-{page_num}.php"
         try:
-            response = get(url)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            response = get(url, headers=headers, timeout=5)
             if response.status_code == 404:
                 time.sleep(1)
                 return None
-
             elif response.status_code == 200:
                 return self.parse_html(response.text)
             else:
-                print(f"{Fore.LIGHTRED_EX}[+]{Fore.LIGHTWHITE_EX} Erreur: impossible de récupérer la page {page_num} (status: {response.status_code}).")
+                logger.error(f"Erreur: impossible de récupérer la page {page_num} (status: {response.status_code}).")
                 return None
         except Exception as e:
-            print(f"{Fore.LIGHTRED_EX}[+]{Fore.LIGHTWHITE_EX} Erreur lors de la récupération de la page {page_num}: {str(e)}")
+            logger.error(f"Erreur lors de la récupération de la page {page_num}: {str(e)}")
             return [], 0
-
 
     def parse_html(self, html):
         soup = BeautifulSoup(html, 'html.parser')
@@ -109,17 +138,25 @@ class DirectorySearch:
 
     def show_results(self, data):
         if data:
-            print(f"\n{Fore.LIGHTGREEN_EX}[+] Résultats:\n")
+            logger.info(f"Résultats :")
             for entry in data:
                 print(f"    {Fore.LIGHTWHITE_EX}{entry[0]} - {entry[1]} - {entry[2]}")
         else:
-            print(f"{Fore.LIGHTRED_EX}[+]{Fore.LIGHTWHITE_EX} Aucun résultat trouvé.")
+            logger.warning(f"Aucun résultat trouvé.")
+
+def validate_input(prompt, regex):
+    while True:
+        user_input = input(prompt).strip()
+        if regex.match(user_input):
+            return user_input
+        else:
+            print(f"{Fore.LIGHTRED_EX}[!] Entrée invalide. Veuillez entrer une valeur valide.")
 
 if __name__ == "__main__":
+    logger.info("Démarrage du programme...")
     directory = DirectorySearch()
 
     while True:
-        clear_screen()
         print(""" 
  ██████╗██╗  ██╗███████╗      ███████╗███████╗ █████╗ ██████╗  ██████╗██╗  ██╗
 ██╔════╝╚██╗██╔╝██╔════╝      ██╔════╝██╔════╝██╔══██╗██╔══██╗██╔════╝██║  ██║
@@ -129,19 +166,19 @@ if __name__ == "__main__":
  ╚═════╝╚═╝  ╚═╝╚══════╝      ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ by Hexcode
                         https://t.me/theCXSgroup""")
 
-        last_name = input(f"{Fore.LIGHTCYAN_EX}Entrez le nom de famille à rechercher: {Fore.LIGHTWHITE_EX}")
-        city = input(f"{Fore.LIGHTCYAN_EX}Entrez la ville (laisser vide pour ignorer le filtrage): {Fore.LIGHTWHITE_EX}")
+        last_name = validate_input(f"{Fore.LIGHTCYAN_EX}Entrez le nom de famille à rechercher: {Fore.LIGHTWHITE_EX}", NAME_REGEX)
+        city = validate_input(f"{Fore.LIGHTCYAN_EX}Entrez la ville (laisser vide pour ignorer le filtrage): {Fore.LIGHTWHITE_EX}", CITY_REGEX)
 
         results = directory.search(last_name)
 
         if city.strip():
             filtered_results = directory.filter_by_city(results, city)
-            print(f"\n{Fore.LIGHTGREEN_EX}[+] Résultats filtrés pour la ville '{city}':")
+            logger.info(f"Résultats filtrés pour la ville '{city}':")
             directory.show_results(filtered_results)
         else:
             directory.show_results(results)
 
         continue_search = input(f"\n{Fore.LIGHTCYAN_EX}Voulez-vous effectuer une autre recherche ? (o/n): {Fore.LIGHTWHITE_EX}")
         if continue_search.lower() != 'o':
-            print(f"{Fore.LIGHTGREEN_EX}[+] Merci d'avoir utilisé le script !")
+            logger.info(f"Merci d'avoir utilisé le script !")
             break
