@@ -38,7 +38,7 @@ Relancez facilement une nouvelle recherche sans avoir à redémarrer le script.
 - **Personnalisable** : Modifiez facilement le script pour l’adapter à d'autres annuaires en ligne, ou ajouter des fonctionnalités supplémentaires.
 
   
-- **Update**
+**Update**
 ```
 - Amelioration du multicoeurs
 - User-Agent
