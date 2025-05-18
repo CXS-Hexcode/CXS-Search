@@ -40,7 +40,7 @@ Relancez facilement une nouvelle recherche sans avoir à redémarrer le script.
 Assurez-vous d’avoir **Python 3.x** installé sur votre machine et d’avoir les bibliothèques suivantes :
 
 ```bash
-```requests
+requests
 beautifulsoup4
 colorama
-tqdm```
+tqdm
