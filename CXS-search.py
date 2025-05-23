@@ -126,7 +126,7 @@ class DirectorySearch:
 
     def filter_by_city(self, data, city):
         filtered_data = []
-        city_lower = city.lower().strip() if city else None
+        city_lower = city.lower().strip() if city else None  
 
         if city_lower:
             for name, phone, address in data:
@@ -144,9 +144,11 @@ class DirectorySearch:
         else:
             logger.warning(f"Aucun résultat trouvé.")
 
-def validate_input(prompt, regex):
+def validate_input(prompt, regex, allow_empty=False):
     while True:
         user_input = input(prompt).strip()
+        if allow_empty and user_input == "":
+            return user_input 
         if regex.match(user_input):
             return user_input
         else:
@@ -167,7 +169,7 @@ if __name__ == "__main__":
                         https://t.me/theCXSgroup""")
 
         last_name = validate_input(f"{Fore.LIGHTCYAN_EX}Entrez le nom de famille à rechercher: {Fore.LIGHTWHITE_EX}", NAME_REGEX)
-        city = validate_input(f"{Fore.LIGHTCYAN_EX}Entrez la ville (laisser vide pour ignorer le filtrage): {Fore.LIGHTWHITE_EX}", CITY_REGEX)
+        city = validate_input(f"{Fore.LIGHTCYAN_EX}Entrez la ville (laisser vide pour ignorer le filtrage): {Fore.LIGHTWHITE_EX}", CITY_REGEX, allow_empty=True)
 
         results = directory.search(last_name)
 
